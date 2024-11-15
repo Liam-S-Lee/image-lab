@@ -74,7 +74,7 @@ const grayScale = async (pathIn, pathOut) => {
       this.pack().pipe(fs.createWriteStream(path.join(pathOut, "out.png")));
     });
 };
-
+//test
 module.exports = {
   unzip,
   readDir,
