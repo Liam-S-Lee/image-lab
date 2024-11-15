@@ -38,7 +38,17 @@ const unzip = async (pathIn, pathOut) => {
  * @param {string} path
  * @return {promise}
  */
-const readDir = (dir) => { };
+const readDir = async (dir) => {
+  //figure out png or not
+  const fileList = await fs.promises.readdir(dir);
+  const fileNames = [];
+  for (const file of fileList) {
+    if (file.includes(".png")) {
+      fileNames.push(file);
+    }
+  }
+  return fileNames;
+};
 
 /**
  * Description: Read in png file by given pathIn,
@@ -48,8 +58,9 @@ const readDir = (dir) => { };
  * @param {string} pathProcessed
  * @return {promise}
  */
-const grayScale = async (pathIn, pathOut) => {
-  await fs.createReadStream(path.join(pathIn, "in.png"))
+const grayScale = async (pathIn, pathOut, fileName) => {
+  await fs.promises.mkdir(pathOut, { recursive: true });
+  await fs.createReadStream(path.join(pathIn, fileName))
     .pipe(
       new PNG({
         filterType: 4,
@@ -60,21 +71,29 @@ const grayScale = async (pathIn, pathOut) => {
         for (var x = 0; x < this.width; x++) {
           var idx = (this.width * y + x) << 2;
 
-          const red = this.data[idx];
-          const green = this.data[idx + 1];
-          const blue = this.data[idx + 2];
-          const gray = (red + green + blue) / 3;
+          const rgba = getChangedRGBA([this.data[idx], this.data[idx + 1], this.data[idx + 2], this.data[idx + 3]]);
 
-          this.data[idx] = gray;
-          this.data[idx + 1] = gray;
-          this.data[idx + 2] = gray;
+          this.data[idx] = rgba.red;
+          this.data[idx + 1] = rgba.green;
+          this.data[idx + 2] = rgba.blue;
+          this.data[idx + 3] = rgba.alpha;
         }
       }
-
-      this.pack().pipe(fs.createWriteStream(path.join(pathOut, "out.png")));
+      this.pack().pipe(fs.createWriteStream(path.join(pathOut, fileName)));
     });
 };
-//test
+
+function getChangedRGBA(rgba) {
+  const gray = (rgba[0] + rgba[1] + rgba[2]) / 3;
+  const rgbaObj = {
+    red: gray,
+    green: gray,
+    blue: gray,
+    alpha: rgba[3]
+  }
+  return rgbaObj;
+}
+
 module.exports = {
   unzip,
   readDir,
