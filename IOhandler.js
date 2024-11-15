@@ -39,26 +39,24 @@ const unzip = async (pathIn, pathOut) => {
  * @return {promise}
  */
 const readDir = async (dir) => {
-  //figure out png or not
-  const fileList = await fs.promises.readdir(dir);
-  const fileNames = [];
-  for (const file of fileList) {
-    if (file.includes(".png")) {
-      fileNames.push(file);
-    }
+  try {
+    const fileNames = await fs.promises.readdir(dir);
+    return fileNames.filter(file => file.includes(".png"));
+  } catch (err) {
+    console.error(err);
   }
-  return fileNames;
 };
 
 /**
  * Description: Read in png file by given pathIn,
  * convert to grayscale and write to given pathOut
  *
+ * @param {number} type 0: Grayscale, 1: Sepia, 2: Invert
  * @param {string} filePath
  * @param {string} pathProcessed
  * @return {promise}
  */
-const grayScale = async (pathIn, pathOut, fileName) => {
+const filterImage = async (type, pathIn, pathOut, fileName) => {
   await fs.promises.mkdir(pathOut, { recursive: true });
   await fs.createReadStream(path.join(pathIn, fileName))
     .pipe(
@@ -71,31 +69,59 @@ const grayScale = async (pathIn, pathOut, fileName) => {
         for (var x = 0; x < this.width; x++) {
           var idx = (this.width * y + x) << 2;
 
-          const rgba = getChangedRGBA([this.data[idx], this.data[idx + 1], this.data[idx + 2], this.data[idx + 3]]);
+          const [r, g, b, a] = getChangedRGBA(
+            type,
+            [this.data[idx],
+            this.data[idx + 1],
+            this.data[idx + 2],
+            this.data[idx + 3]]);
 
-          this.data[idx] = rgba.red;
-          this.data[idx + 1] = rgba.green;
-          this.data[idx + 2] = rgba.blue;
-          this.data[idx + 3] = rgba.alpha;
+          this.data[idx] = r;
+          this.data[idx + 1] = g;
+          this.data[idx + 2] = b;
+          this.data[idx + 3] = a;
         }
       }
       this.pack().pipe(fs.createWriteStream(path.join(pathOut, fileName)));
     });
 };
 
-function getChangedRGBA(rgba) {
-  const gray = (rgba[0] + rgba[1] + rgba[2]) / 3;
-  const rgbaObj = {
-    red: gray,
-    green: gray,
-    blue: gray,
-    alpha: rgba[3]
+function getChangedRGBA(type, rgba) {
+  let [r, g, b, a] = rgba;
+
+  switch (type) {
+    case 0:
+      // GrayScale
+      const gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      r = gray;
+      g = gray;
+      b = gray;
+      break;
+
+    case 1:
+      // Sepia
+      r = r * 0.3588 + g * 0.7044 + b * 0.1368;
+      g = r * 0.2990 + g * 0.5870 + b * 0.1140;
+      b = r * 0.2392 + g * 0.4696 + b * 0.0912;
+      break;
+
+    case 2:
+    default:
+      // Invert
+      r = 255 - r;
+      g = 255 - g;
+      b = 255 - b;
+      break;
   }
-  return rgbaObj;
+
+  r = Math.min(255, Math.max(0, r));
+  g = Math.min(255, Math.max(0, g));
+  b = Math.min(255, Math.max(0, b));
+  return [r, g, b, a];
 }
 
 module.exports = {
   unzip,
   readDir,
-  grayScale,
+  filterImage,
 };
