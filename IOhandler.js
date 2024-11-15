@@ -38,7 +38,17 @@ const unzip = async (pathIn, pathOut) => {
  * @param {string} path
  * @return {promise}
  */
-const readDir = (dir) => { };
+const readDir = async (dir) => {
+  //figure out png or not
+  const fileList = await fs.promises.readdir(dir);
+  const fileNames = [];
+  for (const file of fileList) {
+    if (file.includes(".png")) {
+      fileNames.push(file);
+    }
+  }
+  return fileNames;
+};
 
 /**
  * Description: Read in png file by given pathIn,
@@ -48,8 +58,8 @@ const readDir = (dir) => { };
  * @param {string} pathProcessed
  * @return {promise}
  */
-const grayScale = async (pathIn, pathOut) => {
-  await fs.createReadStream(path.join(pathIn, "in.png"))
+const grayScale = async (pathIn, pathOut, fileName) => {
+  await fs.createReadStream(path.join(pathIn, fileName))
     .pipe(
       new PNG({
         filterType: 4,
@@ -71,10 +81,10 @@ const grayScale = async (pathIn, pathOut) => {
         }
       }
 
-      this.pack().pipe(fs.createWriteStream(path.join(pathOut, "out.png")));
+      this.pack().pipe(fs.createWriteStream(path.join(pathOut, fileName)));
     });
 };
-//test
+
 module.exports = {
   unzip,
   readDir,
